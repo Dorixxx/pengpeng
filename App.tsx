@@ -21,6 +21,7 @@ export default function App() {
   
   // UI State
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [highlightedIndices, setHighlightedIndices] = useState<number[]>([]);
 
   // Core Game State
   const [gameState, setGameState] = useState<GameState>({
@@ -96,7 +97,7 @@ export default function App() {
   };
 
   // --- Logic: Settlement Algorithm ---
-  const calculateSettlement = (grid: GridSlot[]): { result: SettlementResult, newGrid: GridSlot[], removedTurtles: Turtle[] } => {
+  const calculateSettlement = (grid: GridSlot[]): { result: SettlementResult, newGrid: GridSlot[], removedTurtles: Turtle[], matchIndices: number[] } => {
     const activeTurtles = grid.filter(t => t !== null) as Turtle[];
     const removedIndices = new Set<number>();
     const matches: string[] = [];
@@ -171,7 +172,8 @@ export default function App() {
             isClearance
         },
         newGrid,
-        removedTurtles
+        removedTurtles,
+        matchIndices: Array.from(removedIndices)
     };
   };
 
@@ -220,13 +222,6 @@ export default function App() {
                     msgs.push({ id: Date.now() + 1, message: `✨ 许愿成功！${COLOR_LABELS[newColor]} (+1包)`, type: 'wish' });
                 }
 
-                if (hitWish) {
-                    // Side effect in setState updater is not ideal for callbacks, but acceptable for this game loop
-                    // We'll queue the toast here or outside. 
-                    // Better to just let the loop handle state, but we need to trigger toast.
-                    // We'll trust the React batching or use a ref if strictly needed, but here simple logic works.
-                }
-
                 return {
                     ...prev,
                     grid: newGrid,
@@ -236,7 +231,6 @@ export default function App() {
                 };
             });
             
-            // Trigger wish toast outside of state update if possible, or just rely on the fact that wishColor matches
             if (gameState.wishColor === newColor) {
                  addToast(`✨ 许愿成功！${COLOR_LABELS[newColor]}`, 'wish');
             }
@@ -250,7 +244,12 @@ export default function App() {
         isProcessingRef.current = true;
         
         // 1. Calculate Results
-        const { result, newGrid, removedTurtles } = calculateSettlement(gameState.grid);
+        const { result, newGrid, removedTurtles, matchIndices } = calculateSettlement(gameState.grid);
+
+        // Highlight matching cells immediately
+        if (matchIndices.length > 0) {
+            setHighlightedIndices(matchIndices);
+        }
 
         // 2. Trigger Toasts (Staggered)
         let delay = 0;
@@ -298,8 +297,6 @@ export default function App() {
                 // Check if Game Over
                 if (currentPacks <= 0) {
                     const isGridEmpty = newGrid.every(s => s === null);
-                    // If grid is empty, finish. 
-                    // If grid not empty but no matches were found (stuck), finish.
                     if (isGridEmpty || removedTurtles.length === 0) {
                         nextStatus = 'FINISHED';
                         msgs.push({ id: Date.now() + 999, message: "游戏结束！", type: 'info' });
@@ -328,6 +325,8 @@ export default function App() {
                     status: nextStatus
                 };
             });
+            // Clear highlights
+            setHighlightedIndices([]);
             isProcessingRef.current = false;
         }, totalDelay);
     }
@@ -369,7 +368,7 @@ export default function App() {
           </header>
 
           <div className="flex-1 flex items-center justify-center min-h-[400px]">
-               <Grid grid={gameState.grid} />
+               <Grid grid={gameState.grid} highlightedIndices={highlightedIndices} />
           </div>
           
           <div className="md:hidden">
