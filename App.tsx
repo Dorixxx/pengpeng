@@ -148,6 +148,31 @@ export default function App() {
     addToast(`回收成功！获得 ¥${totalValue.toFixed(2)}`, 'bonus');
   };
 
+  const handleHardReset = () => {
+    if (window.confirm("确定要重新开始吗？\n\n这将清除所有的金币、库存和历史记录，恢复到初始状态。")) {
+      // Clear storage
+      localStorage.removeItem(STORAGE_KEY);
+      
+      // Reset all states
+      setBalance(1000);
+      setBuyQuantity(10);
+      setWishColor(null);
+      setSpeed(1);
+      setGameState({
+        inventory: [],
+        grid: [...EMPTY_GRID],
+        packsRemaining: 0,
+        totalOpened: 0,
+        status: 'IDLE',
+        wishColor: null,
+        logs: [],
+        lastAction: null,
+      });
+      
+      addToast("存档已重置，游戏重新开始", 'info');
+    }
+  };
+
   // --- Logic: Settlement Algorithm ---
   const calculateSettlement = (grid: GridSlot[]): { result: SettlementResult, newGrid: GridSlot[], removedTurtles: Turtle[], matchIndices: number[] } => {
     const activeTurtles = grid.filter(t => t !== null) as Turtle[];
@@ -459,6 +484,7 @@ export default function App() {
                   inventoryCount={gameState.inventory.length}
                   speed={speed}
                   setSpeed={setSpeed}
+                  onReset={handleHardReset}
                />
            </div>
            

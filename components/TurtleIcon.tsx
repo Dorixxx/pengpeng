@@ -12,27 +12,30 @@ export const TurtleIcon: React.FC<TurtleIconProps> = ({ color, className = "" })
   
   // Custom mapping for SVG fill colors based on tailwind classes isn't direct, 
   // so we use hex/rgba approximations or logic to map Tailwind back to styles.
-  // For simplicity in this SVG, we will use inline styles generated from the props or a simple map.
+  // Updated to match the "Vibrant & Distinct" palette in constants.ts
   
   const getFillColor = (c: TurtleColor) => {
     switch (c) {
-      case TurtleColor.RED: return '#ef4444';
-      case TurtleColor.BLUE: return '#3b82f6';
-      case TurtleColor.GREEN: return '#22c55e';
-      case TurtleColor.YELLOW: return '#facc15';
-      case TurtleColor.PURPLE: return '#a855f7';
-      case TurtleColor.ORANGE: return '#f97316';
-      case TurtleColor.PINK: return '#f472b6';
-      case TurtleColor.CYAN: return '#22d3ee';
-      case TurtleColor.BROWN: return '#b45309'; // Amber-700
-      case TurtleColor.WHITE: return '#ffffff';
+      case TurtleColor.RED: return '#ef4444';    // Red-500
+      case TurtleColor.BLUE: return '#3b82f6';   // Blue-500
+      case TurtleColor.GREEN: return '#22c55e';  // Green-500
+      case TurtleColor.YELLOW: return '#eab308'; // Yellow-500 (Golden, distinct from White)
+      case TurtleColor.PURPLE: return '#8b5cf6'; // Violet-500 (Distinct from Pink)
+      case TurtleColor.ORANGE: return '#f97316'; // Orange-500
+      case TurtleColor.PINK: return '#ec4899';   // Pink-500 (Hot Pink)
+      case TurtleColor.CYAN: return '#06b6d4';   // Cyan-500 (Teal-ish, distinct from Blue)
+      case TurtleColor.BROWN: return '#d97706';  // Amber-600 (Caramel/Gold-Brown, distinct from Orange)
+      case TurtleColor.WHITE: return '#f3f4f6';  // Gray-100 (Pearl White)
       default: return '#9ca3af';
     }
   };
 
   const getStrokeColor = (c: TurtleColor) => {
-      // Darker version
-      return c === TurtleColor.WHITE ? '#d1d5db' : 'rgba(0,0,0,0.2)';
+      // For white/light turtles, use a darker stroke to define features against the body
+      if (c === TurtleColor.WHITE) return '#4b5563'; // Gray-600
+      if (c === TurtleColor.YELLOW) return '#854d0e'; // Yellow-800
+      // For others, use a subtle dark transparent stroke
+      return 'rgba(0,0,0,0.3)';
   }
 
   const fill = getFillColor(color);
@@ -68,8 +71,8 @@ export const TurtleIcon: React.FC<TurtleIconProps> = ({ color, className = "" })
           strokeWidth="3"
         />
         {/* Shell Pattern */}
-        <path d="M50 30 V 88" stroke={stroke} strokeWidth="2" strokeOpacity="0.3" strokeDasharray="4 2" />
-        <path d="M20 55 H 80" stroke={stroke} strokeWidth="2" strokeOpacity="0.3" strokeDasharray="4 2" />
+        <path d="M50 30 V 88" stroke={stroke} strokeWidth="2" strokeOpacity="0.4" strokeDasharray="4 2" />
+        <path d="M20 55 H 80" stroke={stroke} strokeWidth="2" strokeOpacity="0.4" strokeDasharray="4 2" />
       </svg>
     </div>
   );
