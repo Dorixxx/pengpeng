@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { GameState, TurtleColor, GridSlot, LogEntry, Turtle, SettlementResult, ToastItem } from './types';
 import { COLORS, EMPTY_GRID, COLOR_LABELS, TURTLE_PRICE, TURTLE_SELL_PRICE } from './constants';
@@ -8,8 +7,8 @@ import { GameLog } from './components/GameLog';
 import { ToastOverlay } from './components/ToastOverlay';
 import { Package, Gift, Trophy } from 'lucide-react';
 
-const PLACE_DELAY_MS = 200; // Speed of placing turtles
-const SETTLEMENT_DELAY_MS = 1500; // Duration to wait before clearing grid after settlement
+const BASE_PLACE_DELAY_MS = 200; // Base speed of placing turtles
+const ANIMATION_BASE_DURATION_MS = 1200; // Must match CSS animation duration (1.2s)
 
 export default function App() {
   // Global User State
@@ -18,6 +17,7 @@ export default function App() {
   // Game Configuration State
   const [buyQuantity, setBuyQuantity] = useState(10);
   const [wishColor, setWishColor] = useState<TurtleColor | null>(null);
+  const [speed, setSpeed] = useState(1); // 1x default
   
   // UI State
   const [toasts, setToasts] = useState<ToastItem[]>([]);
@@ -49,7 +49,7 @@ export default function App() {
   const addToast = useCallback((message: string, type: ToastItem['type']) => {
     const id = Date.now() + Math.random();
     setToasts(prev => [...prev, { id, message, type }]);
-    // Auto remove after 3 seconds
+    // Auto remove after 3 seconds (unaffected by game speed to keep UI readable)
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
     }, 3000);
@@ -183,6 +183,9 @@ export default function App() {
     if (gameState.status === 'FINISHED') return;
     if (isProcessingRef.current) return;
 
+    // Helper to scale delay by speed
+    const getDelay = (ms: number) => ms / speed;
+
     // PHASE 1: PLACING
     if (gameState.status === 'PLAYING') {
         const isFull = gameState.grid.every(s => s !== null);
@@ -236,7 +239,7 @@ export default function App() {
             }
 
             isProcessingRef.current = false;
-        }, PLACE_DELAY_MS);
+        }, getDelay(BASE_PLACE_DELAY_MS));
     }
 
     // PHASE 2: SETTLING
@@ -252,35 +255,38 @@ export default function App() {
         }
 
         // 2. Trigger Toasts (Staggered)
-        let delay = 0;
+        // We attempt to fit toasts within the animation window, but prioritizing the animation end for clearance.
+        let currentToastDelay = 0;
         
         const hasMatches = result.matches.length > 0 || result.bonusPacks > 0;
 
         if (!hasMatches) {
              addToast("本轮无组合", 'info');
-             delay = 1000;
         } else {
             if (result.isFullHouse) {
                  addToast("🎉 全家福！(9色不重样)", 'bonus');
-                 delay += 500;
+                 currentToastDelay += getDelay(500);
             } else if (result.isClearance) {
                  addToast("✨ 清台奖励！", 'bonus');
-                 delay += 500;
+                 currentToastDelay += getDelay(500);
             }
 
             result.matches.forEach(m => {
-                setTimeout(() => addToast(m, 'match'), delay);
-                delay += 400;
+                setTimeout(() => addToast(m, 'match'), currentToastDelay);
+                currentToastDelay += getDelay(400);
             });
 
             if (result.bonusPacks > 0) {
-                 setTimeout(() => addToast(`🎁 奖励 +${result.bonusPacks} 包`, 'bonus'), delay + 400);
-                 delay += 500;
+                 setTimeout(() => addToast(`🎁 奖励 +${result.bonusPacks} 包`, 'bonus'), currentToastDelay + getDelay(400));
             }
         }
 
-        // 3. Apply Changes after delay
-        const totalDelay = Math.max(delay + 800, SETTLEMENT_DELAY_MS);
+        // 3. Apply Changes exactly when animation finishes
+        // If there were no matches, we just wait a standard small delay to proceed.
+        // If matches, we wait exactly for the animation duration.
+        const settlementWaitTime = matchIndices.length > 0 
+            ? getDelay(ANIMATION_BASE_DURATION_MS) 
+            : getDelay(1000); 
 
         setTimeout(() => {
             setGameState(prev => {
@@ -325,12 +331,12 @@ export default function App() {
                     status: nextStatus
                 };
             });
-            // Clear highlights
+            // Clear highlights immediately when animation finishes to sync with turtle removal
             setHighlightedIndices([]);
             isProcessingRef.current = false;
-        }, totalDelay);
+        }, settlementWaitTime);
     }
-  }, [gameState.status, gameState.packsRemaining, gameState.grid, gameState.wishColor, gameState.inventory.length, addLog, addToast, gameState.wishColor]);
+  }, [gameState.status, gameState.packsRemaining, gameState.grid, gameState.wishColor, gameState.inventory.length, addLog, addToast, speed]);
 
   return (
     <div className="min-h-screen bg-[#121212] text-white font-fredoka flex flex-col md:flex-row max-w-6xl mx-auto overflow-hidden">
@@ -368,7 +374,7 @@ export default function App() {
           </header>
 
           <div className="flex-1 flex items-center justify-center min-h-[400px]">
-               <Grid grid={gameState.grid} highlightedIndices={highlightedIndices} />
+               <Grid grid={gameState.grid} highlightedIndices={highlightedIndices} speed={speed} />
           </div>
           
           <div className="md:hidden">
@@ -394,6 +400,8 @@ export default function App() {
                   setBuyQuantity={setBuyQuantity}
                   balance={balance}
                   inventoryCount={gameState.inventory.length}
+                  speed={speed}
+                  setSpeed={setSpeed}
                />
            </div>
            
