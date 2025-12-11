@@ -5,10 +5,11 @@ import { Grid } from './components/Grid';
 import { Controls } from './components/Controls';
 import { GameLog } from './components/GameLog';
 import { ToastOverlay } from './components/ToastOverlay';
-import { Package, Gift, Trophy } from 'lucide-react';
+import { Package, Gift } from 'lucide-react';
 
 const BASE_PLACE_DELAY_MS = 200; // Base speed of placing turtles
 const ANIMATION_BASE_DURATION_MS = 1200; // Must match CSS animation duration (1.2s)
+const STORAGE_KEY = 'TURTLE_GAME_SAVE_DATA_V1';
 
 export default function App() {
   // Global User State
@@ -22,6 +23,7 @@ export default function App() {
   // UI State
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [highlightedIndices, setHighlightedIndices] = useState<number[]>([]);
+  const [isDataLoaded, setIsDataLoaded] = useState(false); // Flag to prevent saving before loading
 
   // Core Game State
   const [gameState, setGameState] = useState<GameState>({
@@ -37,14 +39,6 @@ export default function App() {
 
   const isProcessingRef = useRef(false);
 
-  // Helper to add logs
-  const addLog = useCallback((message: string, type: LogEntry['type'] = 'info') => {
-    setGameState(prev => ({
-      ...prev,
-      logs: [...prev.logs, { id: Date.now() + Math.random(), message, type }]
-    }));
-  }, []);
-
   // Helper to add toasts
   const addToast = useCallback((message: string, type: ToastItem['type']) => {
     const id = Date.now() + Math.random();
@@ -54,6 +48,64 @@ export default function App() {
       setToasts(prev => prev.filter(t => t.id !== id));
     }, 3000);
   }, []);
+
+  // Helper to add logs
+  const addLog = useCallback((message: string, type: LogEntry['type'] = 'info') => {
+    setGameState(prev => ({
+      ...prev,
+      logs: [...prev.logs, { id: Date.now() + Math.random(), message, type }]
+    }));
+  }, []);
+
+  // --- Persistence: LOAD ---
+  useEffect(() => {
+    try {
+      const savedData = localStorage.getItem(STORAGE_KEY);
+      if (savedData) {
+        const parsed = JSON.parse(savedData);
+        
+        if (parsed.balance !== undefined) setBalance(parsed.balance);
+        if (parsed.buyQuantity) setBuyQuantity(parsed.buyQuantity);
+        if (parsed.wishColor !== undefined) setWishColor(parsed.wishColor);
+        if (parsed.speed) setSpeed(parsed.speed);
+        
+        if (parsed.gameState) {
+          // Restore game state
+          setGameState(parsed.gameState);
+        }
+        
+        addToast('欢迎回来，游戏进度已恢复', 'info');
+      }
+    } catch (e) {
+      console.error("Failed to load save data", e);
+    } finally {
+      setIsDataLoaded(true);
+    }
+  }, [addToast]);
+
+  // --- Persistence: SAVE ---
+  useEffect(() => {
+    // Only save if data has been initially loaded to avoid overwriting save with defaults
+    if (!isDataLoaded) return;
+
+    try {
+      const dataToSave = {
+        balance,
+        buyQuantity,
+        wishColor,
+        speed,
+        gameState: {
+          ...gameState,
+          // Optimization: Keep only the last 100 logs to prevent storage bloat
+          logs: gameState.logs.slice(-100)
+        }
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+    } catch (e) {
+      console.error("Failed to save game data", e);
+    }
+  }, [balance, buyQuantity, wishColor, speed, gameState, isDataLoaded]);
+
 
   // Start Game Handler
   const handleStart = (quantity: number) => {
@@ -180,6 +232,7 @@ export default function App() {
 
   // --- Game Loop Effect ---
   useEffect(() => {
+    if (!isDataLoaded) return; // Wait for data to load before running game loop
     if (gameState.status === 'FINISHED') return;
     if (isProcessingRef.current) return;
 
@@ -336,7 +389,11 @@ export default function App() {
             isProcessingRef.current = false;
         }, settlementWaitTime);
     }
-  }, [gameState.status, gameState.packsRemaining, gameState.grid, gameState.wishColor, gameState.inventory.length, addLog, addToast, speed]);
+  }, [gameState.status, gameState.packsRemaining, gameState.grid, gameState.wishColor, gameState.inventory.length, addLog, addToast, speed, isDataLoaded]);
+
+  // Don't render full game until data check is done to prevent flash of empty state
+  // Optional: could render a loading spinner here, but strictly not necessary for local storage speed
+  if (!isDataLoaded) return null;
 
   return (
     <div className="min-h-screen bg-[#121212] text-white font-fredoka flex flex-col md:flex-row max-w-6xl mx-auto overflow-hidden">
