@@ -2,7 +2,7 @@ import React from 'react';
 import { TurtleColor } from '../types';
 import { COLORS, COLOR_LABELS, COLOR_MAP, TURTLE_PRICE, TURTLE_SELL_PRICE } from '../constants';
 import { TurtleIcon } from './TurtleIcon';
-import { Sparkles, Play, Coins, Banknote, ShoppingBag } from 'lucide-react';
+import { Sparkles, Play, Coins, Banknote, ShoppingBag, Gauge } from 'lucide-react';
 
 interface ControlsProps {
   wishColor: TurtleColor | null;
@@ -14,6 +14,8 @@ interface ControlsProps {
   setBuyQuantity: (n: number) => void;
   balance: number;
   inventoryCount: number;
+  speed: number;
+  setSpeed: (s: number) => void;
 }
 
 export const Controls: React.FC<ControlsProps> = ({
@@ -25,7 +27,9 @@ export const Controls: React.FC<ControlsProps> = ({
   buyQuantity,
   setBuyQuantity,
   balance,
-  inventoryCount
+  inventoryCount,
+  speed,
+  setSpeed
 }) => {
   
   const isPlaying = status === 'PLAYING' || status === 'SETTLING';
@@ -60,6 +64,28 @@ export const Controls: React.FC<ControlsProps> = ({
         <div className="absolute -right-4 -bottom-8 opacity-10 rotate-12">
             <Coins className="w-32 h-32 text-emerald-400" />
         </div>
+      </div>
+
+      {/* Speed Control */}
+      <div>
+         <div className="flex items-center gap-2 mb-2 text-gray-400 text-sm font-semibold uppercase tracking-wider">
+             <Gauge className="w-4 h-4" /> 游戏速度
+         </div>
+         <div className="flex bg-gray-800 rounded-lg p-1 gap-1 border border-gray-700">
+             {[0.5, 1, 2, 4].map(s => (
+                 <button
+                    key={s}
+                    onClick={() => setSpeed(s)}
+                    className={`flex-1 py-1.5 rounded text-xs font-bold transition-all ${
+                        speed === s 
+                        ? 'bg-indigo-600 text-white shadow-md' 
+                        : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                    }`}
+                 >
+                     {s}x
+                 </button>
+             ))}
+         </div>
       </div>
 
       {/* Buy Controls */}
