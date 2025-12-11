@@ -2,7 +2,7 @@ import React from 'react';
 import { TurtleColor } from '../types';
 import { COLORS, COLOR_LABELS, COLOR_MAP, TURTLE_PRICE, TURTLE_SELL_PRICE } from '../constants';
 import { TurtleIcon } from './TurtleIcon';
-import { Sparkles, Play, Coins, Banknote, ShoppingBag, Gauge } from 'lucide-react';
+import { Sparkles, Play, Coins, Banknote, ShoppingBag, Gauge, RotateCcw } from 'lucide-react';
 
 interface ControlsProps {
   wishColor: TurtleColor | null;
@@ -16,6 +16,7 @@ interface ControlsProps {
   inventoryCount: number;
   speed: number;
   setSpeed: (s: number) => void;
+  onReset: () => void;
 }
 
 export const Controls: React.FC<ControlsProps> = ({
@@ -29,7 +30,8 @@ export const Controls: React.FC<ControlsProps> = ({
   balance,
   inventoryCount,
   speed,
-  setSpeed
+  setSpeed,
+  onReset
 }) => {
   
   const isPlaying = status === 'PLAYING' || status === 'SETTLING';
@@ -199,6 +201,19 @@ export const Controls: React.FC<ControlsProps> = ({
                 </>
             )}
         </button>
+      )}
+
+      {/* Reset Archive Button */}
+      {!isPlaying && (
+          <div className="pt-6 border-t border-gray-800 flex justify-center">
+            <button 
+                onClick={onReset}
+                className="flex items-center gap-2 text-xs font-medium text-red-500 hover:text-red-400 hover:bg-red-500/10 px-4 py-2 rounded-lg transition-colors"
+            >
+                <RotateCcw className="w-3 h-3" />
+                重置存档 / 重新开始
+            </button>
+          </div>
       )}
     </div>
   );
